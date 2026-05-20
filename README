@@ -1,0 +1,14 @@
+# SIGOMEI
+
+Sistema de gestión de mantenimiento industrial.
+
+## Tecnologías
+- Java 17
+- Maven
+- JUnit 5
+- Sockets TCP
+
+## Ejecutar pruebas
+
+```bash
+mvn test
