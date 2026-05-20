@@ -1,14 +1,32 @@
-# SIGOMEI
+# SIGOMEI  
+## Sistema Distribuido para la Gestión de Órdenes de Mantenimiento Industrial
 
-Sistema de gestión de mantenimiento industrial.
+Proyecto para:
 
-## Tecnologías
+- Desarrollo de Sistemas en Red
+- Taller de Prueba de Software
+
+Implementado bajo la metodología TDD (Test Driven Development) utilizando arquitectura cliente-servidor con Sockets TCP.
+
+
+# Tecnologías utilizadas
+
 - Java 17
 - Maven
 - JUnit 5
 - Sockets TCP
+- MySQL
+- Git & GitHub
 
-## Ejecutar pruebas
+# Arquitectura del proyecto
 
-```bash
-mvn test
+El sistema está organizado en capas 
+src/main/java/com/sigomei
+│
+├── model
+├── dao
+├── service
+├── service/impl
+├── server
+├── client
+└── exception
