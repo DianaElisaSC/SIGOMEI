@@ -1,56 +1,37 @@
-# SIGOMEI
+**SIGOMEI** es un sistema desarrollado en **Java** para administrar el mantenimiento de equipos de manera eficiente y organizada.
 
-Sistema de gestión de mantenimiento de equipos desarrollado en Java, Maven y MySQL.
+El proyecto utiliza:
 
-# Clonar el repositorio
+* Java + JDBC
+* Maven
+* MySQL
 
-```bash
-git clone https://github.com/TU-USUARIO/SIGOMEI.git
-```
+---
 
-Entrar a la carpeta del proyecto:
+## Configurar Base de Datos
 
-```bash
-cd SIGOMEI
-```
+Ingresar a MySQL:
 
-# Configuración de MySQL
-
-## Windows
+### Windows
 
 ```bash
 mysql -u root -p
 ```
 
-Ingresar la contraseña de MySQL.
-
----
-
-## macOS
-
-Ejecutar:
+### macOS
 
 ```bash
 /usr/local/mysql/bin/mysql -u root -p
 ```
 
-Ingresar la contraseña de MySQL.
+---
 
+## Configuración JDBC
 
-# Configuración de conexión
-
-Ir al archivo:
+Editar el archivo:
 
 ```text
 src/main/resources/db.properties
-```
-
-Modificar los datos según la configuración local de MySQL:
-
-```properties
-db.url=jdbc:mysql://127.0.0.1:3306/sigomei
-db.user=root
-db.password=TU_CONTRASEÑA
 ```
 
 Ejemplo:
@@ -61,73 +42,38 @@ db.user=root
 db.password=12340
 ```
 
-# Compilar el proyecto
+---
 
-Desde la raíz del proyecto ejecutar:
-
-```
-mvn clean compile
-```
-# Comandos
-
-## Compilar
+### Compilar
 
 ```bash
 mvn clean compile
 ```
 
----
-
-## Ejecutar pruebas
+### Ejecutar pruebas
 
 ```bash
 mvn test
 ```
 
----
-
-## Limpiar archivos compilados
+### Limpiar proyecto
 
 ```bash
 mvn clean
 ```
 
 ---
+## Ejecutar Pruebas
 
-# Solución de errores
+Ejecuta todas las pruebas del proyecto con:
 
-## Error: Access denied for user 'root'
-
-Verificar:
-
-- Usuario
-- Contraseña
-- Puerto
-- MySQL iniciado
-
-También revisar el archivo:
-
-```text
-src/main/resources/db.properties
 ```
-
-## Error: mysql command not found
-
-### Windows
-
-Verificar que MySQL esté agregado al PATH del sistema.
-
-
-### macOS
-
-Usar:
-
-```bash
-/usr/local/mysql/bin/mysql -u root -p
+mvn test
 ```
+---
+##  Notas
 
-# Notas
+* Puerto MySQL por defecto: `3306`
+* Conexión mediante JDBC
+* Configuración en `db.properties`
 
-- El archivo `db.properties` contiene la configuración de conexión local.
-- El puerto usado por defecto es `3306`.
-- La conexión se realiza usando JDBC.
