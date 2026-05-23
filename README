@@ -1,32 +1,133 @@
-# SIGOMEI  
-## Sistema Distribuido para la Gestión de Órdenes de Mantenimiento Industrial
+# SIGOMEI
 
-Proyecto para:
+Sistema de gestión de mantenimiento de equipos desarrollado en Java, Maven y MySQL.
 
-- Desarrollo de Sistemas en Red
-- Taller de Prueba de Software
+# Clonar el repositorio
 
-Implementado bajo la metodología TDD (Test Driven Development) utilizando arquitectura cliente-servidor con Sockets TCP.
+```bash
+git clone https://github.com/TU-USUARIO/SIGOMEI.git
+```
+
+Entrar a la carpeta del proyecto:
+
+```bash
+cd SIGOMEI
+```
+
+# Configuración de MySQL
+
+## Windows
+
+```bash
+mysql -u root -p
+```
+
+Ingresar la contraseña de MySQL.
+
+---
+
+## macOS
+
+Ejecutar:
+
+```bash
+/usr/local/mysql/bin/mysql -u root -p
+```
+
+Ingresar la contraseña de MySQL.
 
 
-# Tecnologías utilizadas
+# Configuración de conexión
 
-- Java 17
-- Maven
-- JUnit 5
-- Sockets TCP
-- MySQL
-- Git & GitHub
+Ir al archivo:
 
-# Arquitectura del proyecto
+```text
+src/main/resources/db.properties
+```
 
-El sistema está organizado en capas 
-src/main/java/com/sigomei
-│
-├── model
-├── dao
-├── service
-├── service/impl
-├── server
-├── client
-└── exception
+Modificar los datos según la configuración local de MySQL:
+
+```properties
+db.url=jdbc:mysql://127.0.0.1:3306/sigomei
+db.user=root
+db.password=TU_CONTRASEÑA
+```
+
+Ejemplo:
+
+```properties
+db.url=jdbc:mysql://127.0.0.1:3306/sigomei
+db.user=root
+db.password=12340
+```
+
+# Compilar el proyecto
+
+Desde la raíz del proyecto ejecutar:
+
+```
+mvn clean compile
+```
+# Comandos
+
+## Compilar
+
+```bash
+mvn clean compile
+```
+
+---
+
+## Ejecutar pruebas
+
+```bash
+mvn test
+```
+
+---
+
+## Limpiar archivos compilados
+
+```bash
+mvn clean
+```
+
+---
+
+# Solución de errores
+
+## Error: Access denied for user 'root'
+
+Verificar:
+
+- Usuario
+- Contraseña
+- Puerto
+- MySQL iniciado
+
+También revisar el archivo:
+
+```text
+src/main/resources/db.properties
+```
+
+## Error: mysql command not found
+
+### Windows
+
+Verificar que MySQL esté agregado al PATH del sistema.
+
+
+### macOS
+
+Usar:
+
+```bash
+/usr/local/mysql/bin/mysql -u root -p
+```
+
+# Notas
+
+- El archivo `db.properties` contiene la configuración de conexión local.
+- El puerto usado por defecto es `3306`.
+- La conexión se realiza usando JDBC.
