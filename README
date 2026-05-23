@@ -1,79 +1,42 @@
-**SIGOMEI** es un sistema desarrollado en **Java** para administrar el mantenimiento de equipos de manera eficiente y organizada.
-
-El proyecto utiliza:
-
-* Java + JDBC
-* Maven
-* MySQL
-
----
-
 ## Configurar Base de Datos
 
 Ingresar a MySQL:
 
 ### Windows
 
-```bash
 mysql -u root -p
-```
+
 
 ### macOS
-
-```bash
 /usr/local/mysql/bin/mysql -u root -p
-```
 
----
 
 ## Configuración JDBC
 
 Editar el archivo:
 
-```text
 src/main/resources/db.properties
-```
 
 Ejemplo:
 
-```properties
+properties
 db.url=jdbc:mysql://127.0.0.1:3306/sigomei
 db.user=root
 db.password=12340
-```
 
----
 
 ### Compilar
 
-```bash
 mvn clean compile
-```
+
 
 ### Ejecutar pruebas
 
-```bash
 mvn test
-```
 
-### Limpiar proyecto
-
-```bash
-mvn clean
-```
-
----
-## Ejecutar Pruebas
-
-Ejecuta todas las pruebas del proyecto con:
-
-```
-mvn test
-```
----
 ##  Notas
 
-* Puerto MySQL por defecto: `3306`
-* Conexión mediante JDBC
-* Configuración en `db.properties`
+Puerto MySQL por defecto: 3306
+Conexión mediante JDBC
+Configuración en db.properties
 
