@@ -1,8 +1,12 @@
-/Users/diana/SIGOMEI/src/main/java/com/sigomei/App.java
+/Users/diana/SIGOMEI/src/main/java/com/sigomei/Main.java
 /Users/diana/SIGOMEI/src/main/java/com/sigomei/client/ClientMain.java
+/Users/diana/SIGOMEI/src/main/java/com/sigomei/config/ConexionBD.java
 /Users/diana/SIGOMEI/src/main/java/com/sigomei/dao/EquipoDAO.java
 /Users/diana/SIGOMEI/src/main/java/com/sigomei/dao/OrdenDAO.java
 /Users/diana/SIGOMEI/src/main/java/com/sigomei/dao/TecnicoDAO.java
+/Users/diana/SIGOMEI/src/main/java/com/sigomei/dao/impl/EquipoDAOImpl.java
+/Users/diana/SIGOMEI/src/main/java/com/sigomei/dao/impl/OrdenDAOImpl.java
+/Users/diana/SIGOMEI/src/main/java/com/sigomei/dao/impl/TecnicoDAOImpl.java
 /Users/diana/SIGOMEI/src/main/java/com/sigomei/exception/BusinessException.java
 /Users/diana/SIGOMEI/src/main/java/com/sigomei/model/Equipo.java
 /Users/diana/SIGOMEI/src/main/java/com/sigomei/model/Orden.java

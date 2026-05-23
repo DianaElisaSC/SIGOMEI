@@ -10,9 +10,17 @@ public interface OrdenDAO {
 
     void actualizar(Orden orden);
 
-    void eliminar(int id);
+    void eliminar(int idOrden);
 
-    Orden buscarPorId(int id);
+    Orden buscarPorId(int idOrden);
 
     List<Orden> listar();
+
+    List<Orden> listarPorEquipo(int idEquipo);
+
+    List<Orden> listarPorTecnico(int idTecnico);
+
+    List<Orden> listarPorEstado(String estado);
+
+    boolean existeOrdenActivaParaEquipo(int idEquipo);
 }
