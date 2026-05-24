@@ -166,8 +166,8 @@ Las 22 pruebas unitarias (RN01Test – RN08Test) validan las reglas de negocio d
 
 | Persona | Responsabilidad |
 |---------|-----------------|
-| Persona 1 | Backend: servicios, DAO, MySQL, servidor TCP |
-| Persona 2 | Cliente GUI Swing, Script SQL, README |
-| Persona 3 | Pruebas unitarias TDD, integración final |
+| Diana | Backend: servicios, DAO, MySQL, servidor TCP |
+| Rogelio | Cliente GUI Swing, Script SQL, README |
+| Carlos | Pruebas unitarias TDD, integración final |
 
 Universidad Veracruzana
