@@ -1,7 +1,6 @@
-```java
 package com.sigomei.server;
 
-import com.google.gson.*;
+import com.sigomei.config.ConexionBD;
 import com.sigomei.dao.impl.EquipoDAOImpl;
 import com.sigomei.dao.impl.OrdenDAOImpl;
 import com.sigomei.dao.impl.TecnicoDAOImpl;
@@ -9,37 +8,30 @@ import com.sigomei.exception.BusinessException;
 import com.sigomei.model.Equipo;
 import com.sigomei.model.Orden;
 import com.sigomei.model.Tecnico;
+import com.sigomei.protocol.Request;
+import com.sigomei.protocol.Response;
 import com.sigomei.service.impl.EquipoServiceImpl;
 import com.sigomei.service.impl.OrdenServiceImpl;
 import com.sigomei.service.impl.TecnicoServiceImpl;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.sql.Connection;
 import java.time.LocalDate;
 import java.util.List;
 
+/**
+ * Maneja la sesión de un cliente conectado.
+ * Lee objetos Request y responde con objetos Response
+ * usando serialización Java sobre TCP.
+ */
 public class ClientHandler extends Thread {
 
-    private static final Logger LOG = LoggerFactory.getLogger(ClientHandler.class);
-
-    private static final Gson GSON = new GsonBuilder()
-            .registerTypeAdapter(LocalDate.class,
-                    (JsonSerializer<LocalDate>) (src, typeOfSrc, context)
-                            -> new JsonPrimitive(src.toString()))
-            .registerTypeAdapter(LocalDate.class,
-                    (JsonDeserializer<LocalDate>) (json, typeOfT, context)
-                            -> LocalDate.parse(json.getAsString()))
-            .create();
-
     private final Socket socket;
-
-    private final EquipoDAOImpl equipoDAO = new EquipoDAOImpl();
-    private final TecnicoDAOImpl tecnicoDAO = new TecnicoDAOImpl();
-    private final OrdenDAOImpl ordenDAO = new OrdenDAOImpl();
+    private EquipoDAOImpl equipoDAO;
+    private TecnicoDAOImpl tecnicoDAO;
+    private OrdenDAOImpl ordenDAO;
 
     public ClientHandler(Socket socket) {
         this.socket = socket;
@@ -47,47 +39,36 @@ public class ClientHandler extends Thread {
 
     @Override
     public void run() {
-
         String remote = socket.getRemoteSocketAddress().toString();
-
-        LOG.info("[{}] Sesión iniciada", remote);
+        System.out.println("[" + remote + "] Sesion iniciada");
 
         try (
-                BufferedReader in = new BufferedReader(
-                        new InputStreamReader(socket.getInputStream()));
-
-                PrintWriter out = new PrintWriter(
-                        socket.getOutputStream(), true)
+            Connection conn = ConexionBD.conectar();
+            // OOS primero + flush para evitar deadlock al crear OIS
+            ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream())
         ) {
+            out.flush();
 
-            String line;
+            equipoDAO = new EquipoDAOImpl(conn);
+            tecnicoDAO = new TecnicoDAOImpl(conn);
+            ordenDAO = new OrdenDAOImpl(conn);
 
-            while ((line = in.readLine()) != null) {
+            try (ObjectInputStream in = new ObjectInputStream(socket.getInputStream())) {
 
-                if (line.isBlank()) {
-                    continue;
+                Request req;
+                while ((req = (Request) in.readObject()) != null) {
+                    Response resp = dispatch(req);
+                    out.writeObject(resp);
+                    out.flush();
+                    out.reset(); // evita acumular caché de objetos serializados
                 }
 
-                LOG.info("[{}] Mensaje recibido: {}", remote, line);
-
-                String response = dispatch(line);
-
-                out.println(response);
-
-                LOG.info("[{}] Respuesta enviada: {}", remote, response);
             }
-
         } catch (Exception e) {
-
-            LOG.error("[{}] Error en sesión: {}", remote, e.getMessage(), e);
-
+            // Fin de sesión normal (cliente cerró conexión) o error de red
+            System.out.println("[" + remote + "] Sesion finalizada: " + e.getMessage());
         } finally {
-
-            try {
-                socket.close();
-            } catch (Exception ignored) {}
-
-            LOG.info("[{}] Sesión finalizada", remote);
+            try { socket.close(); } catch (Exception ignored) {}
         }
     }
 
@@ -95,55 +76,33 @@ public class ClientHandler extends Thread {
     // DESPACHADOR
     // =========================================================
 
-    private String dispatch(String json) {
-
+    private Response dispatch(Request req) {
         try {
-
-            JsonObject request = GSON.fromJson(json, JsonObject.class);
-
-            String tipo = request.get("tipo").getAsString();
-
-            JsonObject payload = request.has("payload")
-                    ? request.getAsJsonObject("payload")
-                    : new JsonObject();
-
-            return switch (tipo) {
-
-                case "PING" -> ok("pong", null);
+            return switch (req.getCommand()) {
 
                 // EQUIPOS
-                case "CREAR_EQUIPO" -> crearEquipo(payload);
-                case "LISTAR_EQUIPOS" -> listarEquipos();
-                case "ACTUALIZAR_EQUIPO" -> actualizarEquipo(payload);
-                case "ELIMINAR_EQUIPO" -> eliminarEquipo(payload);
+                case Request.LIST_EQUIPOS  -> Response.ok(equipoDAO.listar());
+                case Request.ADD_EQUIPO    -> addEquipo((Equipo) req.getPayload());
+                case Request.UPDATE_EQUIPO -> updateEquipo((Equipo) req.getPayload());
+                case Request.DELETE_EQUIPO -> deleteEquipo((Integer) req.getPayload());
 
                 // TECNICOS
-                case "CREAR_TECNICO" -> crearTecnico(payload);
-                case "LISTAR_TECNICOS" -> listarTecnicos();
-                case "ACTUALIZAR_TECNICO" -> actualizarTecnico(payload);
+                case Request.LIST_TECNICOS  -> Response.ok(tecnicoDAO.listar());
+                case Request.ADD_TECNICO    -> addTecnico((Tecnico) req.getPayload());
+                case Request.UPDATE_TECNICO -> updateTecnico((Tecnico) req.getPayload());
+                case Request.DELETE_TECNICO -> deleteTecnico((Integer) req.getPayload());
 
                 // ORDENES
-                case "CREAR_ORDEN" -> crearOrden(payload);
-                case "LISTAR_ORDENES" -> listarOrdenes();
-                case "CAMBIAR_ESTADO_ORDEN" -> cambiarEstadoOrden(payload);
-                case "REGISTRAR_CIERRE" -> registrarCierre(payload);
-                case "CANCELAR_ORDEN" -> cancelarOrden(payload);
-                case "HISTORIAL_EQUIPO" -> historialEquipo(payload);
+                case Request.LIST_ORDENES      -> Response.ok(ordenDAO.listar());
+                case Request.ADD_ORDEN         -> addOrden((Orden) req.getPayload());
+                case Request.ACTUALIZAR_ESTADO -> actualizarEstado((Object[]) req.getPayload());
+                case Request.REGISTRAR_CIERRE  -> registrarCierre((Object[]) req.getPayload());
+                case Request.DELETE_ORDEN      -> deleteOrden((Integer) req.getPayload());
 
-                default -> error(
-                        "OPERACION_DESCONOCIDA",
-                        "Tipo desconocido: " + tipo
-                );
+                default -> Response.error("Comando desconocido: " + req.getCommand());
             };
-
         } catch (Exception e) {
-
-            LOG.error("Error procesando mensaje", e);
-
-            return error(
-                    "INTERNAL_ERROR",
-                    e.getMessage()
-            );
+            return Response.error("Error interno: " + e.getMessage());
         }
     }
 
@@ -151,79 +110,28 @@ public class ClientHandler extends Thread {
     // EQUIPOS
     // =========================================================
 
-    private String crearEquipo(JsonObject payload) {
-
+    private Response addEquipo(Equipo equipo) {
         try {
-
-            Equipo equipo = GSON.fromJson(payload, Equipo.class);
-
-            EquipoServiceImpl service =
-                    new EquipoServiceImpl(ordenDAO.listar());
-
-            service.registrarEquipo(equipo);
-
+            new EquipoServiceImpl(ordenDAO.listar()).registrarEquipo(equipo);
             equipoDAO.guardar(equipo);
-
-            return ok(
-                    "Equipo registrado",
-                    GSON.toJsonTree(equipo)
-            );
-
+            return Response.ok();
         } catch (BusinessException e) {
-
-            return error(
-                    "REGLA_NEGOCIO",
-                    e.getMessage()
-            );
+            return Response.error(e.getMessage());
         }
     }
 
-    private String listarEquipos() {
-
-        List<Equipo> lista = equipoDAO.listar();
-
-        return ok(
-                "OK",
-                GSON.toJsonTree(lista)
-        );
-    }
-
-    private String actualizarEquipo(JsonObject payload) {
-
-        Equipo equipo = GSON.fromJson(payload, Equipo.class);
-
+    private Response updateEquipo(Equipo equipo) {
         equipoDAO.actualizar(equipo);
-
-        return ok(
-                "Equipo actualizado",
-                GSON.toJsonTree(equipo)
-        );
+        return Response.ok();
     }
 
-    private String eliminarEquipo(JsonObject payload) {
-
-        int idEquipo = payload.get("idEquipo").getAsInt();
-
+    private Response deleteEquipo(int id) {
         try {
-
-            EquipoServiceImpl service =
-                    new EquipoServiceImpl(ordenDAO.listar());
-
-            service.eliminarEquipo(idEquipo);
-
-            equipoDAO.eliminar(idEquipo);
-
-            return ok(
-                    "Equipo eliminado",
-                    null
-            );
-
+            new EquipoServiceImpl(ordenDAO.listar()).eliminarEquipo(id);
+            equipoDAO.eliminar(id);
+            return Response.ok();
         } catch (BusinessException e) {
-
-            return error(
-                    "EQUIPO_CON_ORDENES",
-                    e.getMessage()
-            );
+            return Response.error(e.getMessage());
         }
     }
 
@@ -231,276 +139,90 @@ public class ClientHandler extends Thread {
     // TECNICOS
     // =========================================================
 
-    private String crearTecnico(JsonObject payload) {
-
+    private Response addTecnico(Tecnico tecnico) {
         try {
-
-            Tecnico tecnico = GSON.fromJson(payload, Tecnico.class);
-
-            TecnicoServiceImpl service = new TecnicoServiceImpl();
-
-            service.registrarTecnico(tecnico);
-
+            new TecnicoServiceImpl().registrarTecnico(tecnico);
             tecnicoDAO.guardar(tecnico);
-
-            return ok(
-                    "Tecnico registrado",
-                    GSON.toJsonTree(tecnico)
-            );
-
+            return Response.ok();
         } catch (BusinessException e) {
-
-            return error(
-                    "REGLA_NEGOCIO",
-                    e.getMessage()
-            );
+            return Response.error(e.getMessage());
         }
     }
 
-    private String listarTecnicos() {
-
-        List<Tecnico> lista = tecnicoDAO.listar();
-
-        return ok(
-                "OK",
-                GSON.toJsonTree(lista)
-        );
+    private Response updateTecnico(Tecnico tecnico) {
+        tecnicoDAO.actualizar(tecnico);
+        return Response.ok();
     }
 
-    private String actualizarTecnico(JsonObject payload) {
-
-        Tecnico tecnico = GSON.fromJson(payload, Tecnico.class);
-
-        tecnicoDAO.actualizar(tecnico);
-
-        return ok(
-                "Tecnico actualizado",
-                GSON.toJsonTree(tecnico)
-        );
+    private Response deleteTecnico(int id) {
+        tecnicoDAO.eliminar(id);
+        return Response.ok();
     }
 
     // =========================================================
     // ORDENES
     // =========================================================
 
-    private String crearOrden(JsonObject payload) {
-
+    private Response addOrden(Orden orden) {
         try {
-
-            Orden orden = GSON.fromJson(payload, Orden.class);
-
-            OrdenServiceImpl service =
-                    new OrdenServiceImpl(
-                            tecnicoDAO.listar(),
-                            equipoDAO.listar(),
-                            ordenDAO.listar()
-                    );
-
-            service.registrarOrden(orden);
-
+            new OrdenServiceImpl(
+                    tecnicoDAO.listar(),
+                    equipoDAO.listar(),
+                    ordenDAO.listar()
+            ).registrarOrden(orden);
             ordenDAO.guardar(orden);
-
-            return ok(
-                    "Orden registrada",
-                    GSON.toJsonTree(orden)
-            );
-
+            return Response.ok();
         } catch (BusinessException e) {
-
-            return error(
-                    "REGLA_NEGOCIO",
-                    e.getMessage()
-            );
+            return Response.error(e.getMessage());
         }
     }
 
-    private String listarOrdenes() {
-
-        List<Orden> lista = ordenDAO.listar();
-
-        return ok(
-                "OK",
-                GSON.toJsonTree(lista)
-        );
-    }
-
-    private String cambiarEstadoOrden(JsonObject payload) {
-
-        int idOrden = payload.get("idOrden").getAsInt();
-
-        String nuevoEstado =
-                payload.get("nuevoEstado").getAsString();
-
+    private Response actualizarEstado(Object[] payload) {
+        int    id     = (Integer) payload[0];
+        String estado = (String)  payload[1];
         try {
-
             List<Orden> ordenes = ordenDAO.listar();
-
-            OrdenServiceImpl service =
-                    new OrdenServiceImpl(
-                            tecnicoDAO.listar(),
-                            equipoDAO.listar(),
-                            ordenes
-                    );
-
-            service.actualizarEstado(idOrden, nuevoEstado);
-
+            new OrdenServiceImpl(
+                    tecnicoDAO.listar(),
+                    equipoDAO.listar(),
+                    ordenes
+            ).actualizarEstado(id, estado);
+            // El servicio modifica el objeto Orden dentro de la lista por referencia
             Orden actualizada = ordenes.stream()
-                    .filter(o -> o.getIdOrden() == idOrden)
+                    .filter(o -> o.getIdOrden() == id)
                     .findFirst()
                     .orElseThrow();
-
             ordenDAO.actualizar(actualizada);
-
-            return ok(
-                    "Estado actualizado",
-                    GSON.toJsonTree(actualizada)
-            );
-
+            return Response.ok();
         } catch (BusinessException e) {
-
-            return error(
-                    "TRANSICION_INVALIDA",
-                    e.getMessage()
-            );
+            return Response.error(e.getMessage());
         }
     }
 
-    private String registrarCierre(JsonObject payload) {
-
-        int idOrden =
-                payload.get("idOrden").getAsInt();
-
-        LocalDate fechaInicio =
-                LocalDate.parse(payload.get("fechaInicio").getAsString());
-
-        LocalDate fechaCierre =
-                LocalDate.parse(payload.get("fechaCierre").getAsString());
-
+    private Response registrarCierre(Object[] payload) {
+        int       id    = (Integer)   payload[0];
+        LocalDate inicio = (LocalDate) payload[1];
+        LocalDate cierre = (LocalDate) payload[2];
         try {
-
             List<Orden> ordenes = ordenDAO.listar();
-
-            OrdenServiceImpl service =
-                    new OrdenServiceImpl(
-                            tecnicoDAO.listar(),
-                            equipoDAO.listar(),
-                            ordenes
-                    );
-
-            service.registrarCierre(
-                    idOrden,
-                    fechaInicio,
-                    fechaCierre
-            );
-
+            new OrdenServiceImpl(
+                    tecnicoDAO.listar(),
+                    equipoDAO.listar(),
+                    ordenes
+            ).registrarCierre(id, inicio, cierre);
             Orden actualizada = ordenes.stream()
-                    .filter(o -> o.getIdOrden() == idOrden)
+                    .filter(o -> o.getIdOrden() == id)
                     .findFirst()
                     .orElseThrow();
-
             ordenDAO.actualizar(actualizada);
-
-            return ok(
-                    "Cierre registrado",
-                    GSON.toJsonTree(actualizada)
-            );
-
+            return Response.ok();
         } catch (BusinessException e) {
-
-            return error(
-                    "ERROR_CIERRE",
-                    e.getMessage()
-            );
+            return Response.error(e.getMessage());
         }
     }
 
-    private String cancelarOrden(JsonObject payload) {
-
-        int idOrden =
-                payload.get("idOrden").getAsInt();
-
-        try {
-
-            List<Orden> ordenes = ordenDAO.listar();
-
-            OrdenServiceImpl service =
-                    new OrdenServiceImpl(
-                            tecnicoDAO.listar(),
-                            equipoDAO.listar(),
-                            ordenes
-                    );
-
-            service.actualizarEstado(
-                    idOrden,
-                    "Cancelada"
-            );
-
-            Orden actualizada = ordenes.stream()
-                    .filter(o -> o.getIdOrden() == idOrden)
-                    .findFirst()
-                    .orElseThrow();
-
-            ordenDAO.actualizar(actualizada);
-
-            return ok(
-                    "Orden cancelada",
-                    GSON.toJsonTree(actualizada)
-            );
-
-        } catch (BusinessException e) {
-
-            return error(
-                    "CANCELACION_INVALIDA",
-                    e.getMessage()
-            );
-        }
-    }
-
-    private String historialEquipo(JsonObject payload) {
-
-        int idEquipo =
-                payload.get("idEquipo").getAsInt();
-
-        List<Orden> lista =
-                ordenDAO.listarPorEquipo(idEquipo);
-
-        return ok(
-                "OK",
-                GSON.toJsonTree(lista)
-        );
-    }
-
-    // =========================================================
-    // RESPUESTAS JSON
-    // =========================================================
-
-    private String ok(String mensaje, JsonElement payload) {
-
-        JsonObject response = new JsonObject();
-
-        response.addProperty("status", "OK");
-        response.addProperty("mensaje", mensaje);
-
-        response.add(
-                "payload",
-                payload != null ? payload : JsonNull.INSTANCE
-        );
-
-        return GSON.toJson(response);
-    }
-
-    private String error(String codigo, String mensaje) {
-
-        JsonObject response = new JsonObject();
-
-        response.addProperty("status", "ERROR");
-        response.addProperty("codigoError", codigo);
-        response.addProperty("mensaje", mensaje);
-
-        response.add("payload", JsonNull.INSTANCE);
-
-        return GSON.toJson(response);
+    private Response deleteOrden(int id) {
+        ordenDAO.eliminar(id);
+        return Response.ok();
     }
 }
-```
-

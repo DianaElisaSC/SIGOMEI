@@ -10,7 +10,7 @@ public class ServerMain {
         try {
 
             ServerSocket serverSocket =
-                    new ServerSocket(8080);
+                    new ServerSocket(5000);
 
             System.out.println(
                     "Servidor iniciado..."

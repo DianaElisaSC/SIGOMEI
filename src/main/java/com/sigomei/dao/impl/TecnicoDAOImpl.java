@@ -30,12 +30,12 @@ public class TecnicoDAOImpl implements TecnicoDAO {
         try (PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 
             ps.setString(1, t.getNombre());
-            ps.setString(2, t.getRfc());
+            ps.setString(2, rfcOrDefault(t.getRfc()));
             ps.setString(3, t.getTelefono());
             ps.setString(4, t.getCorreo());
             ps.setString(5, t.getEspecialidad());
             ps.setString(6, t.getNivelCertStr());
-            ps.setDate(7, Date.valueOf(t.getFechaIngreso()));
+            setDateOrNull(ps, 7, t.getFechaIngreso());
             ps.setString(8, t.getEstatus());
 
             ps.executeUpdate();
@@ -62,12 +62,12 @@ public class TecnicoDAOImpl implements TecnicoDAO {
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setString(1, t.getNombre());
-            ps.setString(2, t.getRfc());
+            ps.setString(2, rfcOrDefault(t.getRfc()));
             ps.setString(3, t.getTelefono());
             ps.setString(4, t.getCorreo());
             ps.setString(5, t.getEspecialidad());
             ps.setString(6, t.getNivelCertStr());
-            ps.setDate(7, Date.valueOf(t.getFechaIngreso()));
+            setDateOrNull(ps, 7, t.getFechaIngreso());
             ps.setString(8, t.getEstatus());
             ps.setInt(9, t.getIdTecnico());
 
@@ -182,5 +182,21 @@ public class TecnicoDAOImpl implements TecnicoDAO {
         t.setEstatus(rs.getString("estatus"));
 
         return t;
+    }
+
+    private void setDateOrNull(PreparedStatement ps, int index, java.time.LocalDate value)
+            throws SQLException {
+        if (value == null) {
+            ps.setNull(index, java.sql.Types.DATE);
+        } else {
+            ps.setDate(index, Date.valueOf(value));
+        }
+    }
+
+    private String rfcOrDefault(String rfc) {
+        if (rfc == null || rfc.trim().isEmpty()) {
+            return "N/A";
+        }
+        return rfc;
     }
 }

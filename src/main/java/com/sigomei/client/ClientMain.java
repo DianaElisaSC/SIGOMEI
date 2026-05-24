@@ -1,22 +1,24 @@
 package com.sigomei.client;
 
-import java.net.Socket;
+import javax.swing.SwingUtilities;
+import javax.swing.UIManager;
 
+/**
+ * Punto de entrada del cliente SIGOMEI.
+ * Lanza la ventana principal en el hilo de despacho de eventos (EDT).
+ */
 public class ClientMain {
 
     public static void main(String[] args) {
-
+        // Aplicar look-and-feel del sistema operativo
         try {
+            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+        } catch (Exception ignored) {}
 
-            Socket socket =
-                    new Socket("localhost", 5000);
-
-            System.out.println(
-                    "Conectado al servidor"
-            );
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        // Lanzar GUI en el EDT
+        SwingUtilities.invokeLater(() -> {
+            MainFrame frame = new MainFrame();
+            frame.setVisible(true);
+        });
     }
 }

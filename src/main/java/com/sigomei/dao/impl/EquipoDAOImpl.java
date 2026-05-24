@@ -32,8 +32,8 @@ public class EquipoDAOImpl implements EquipoDAO {
             ps.setString(4, e.getModelo());
             ps.setString(5, e.getNumeroSerie());
             ps.setString(6, e.getUbicacionPlanta());
-            ps.setDate(7, Date.valueOf(e.getFechaInstalacion()));
-            ps.setString(8, e.getEstadoOperativo());
+            setDateOrNull(ps, 7, e.getFechaInstalacion());
+            ps.setString(8, estadoOrDefault(e.getEstadoOperativo()));
             ps.setString(9, e.getCriticidad());
 
             ps.executeUpdate();
@@ -66,8 +66,8 @@ public class EquipoDAOImpl implements EquipoDAO {
             ps.setString(4, e.getModelo());
             ps.setString(5, e.getNumeroSerie());
             ps.setString(6, e.getUbicacionPlanta());
-            ps.setDate(7, Date.valueOf(e.getFechaInstalacion()));
-            ps.setString(8, e.getEstadoOperativo());
+            setDateOrNull(ps, 7, e.getFechaInstalacion());
+            ps.setString(8, estadoOrDefault(e.getEstadoOperativo()));
             ps.setString(9, e.getCriticidad());
             ps.setInt(10, e.getIdEquipo());
 
@@ -205,5 +205,21 @@ public class EquipoDAOImpl implements EquipoDAO {
         e.setCriticidad(rs.getString("criticidad"));
 
         return e;
+    }
+
+    private void setDateOrNull(PreparedStatement ps, int index, java.time.LocalDate value)
+            throws SQLException {
+        if (value == null) {
+            ps.setNull(index, java.sql.Types.DATE);
+        } else {
+            ps.setDate(index, Date.valueOf(value));
+        }
+    }
+
+    private String estadoOrDefault(String estado) {
+        if (estado == null || estado.trim().isEmpty()) {
+            return "Activo";
+        }
+        return estado;
     }
 }
