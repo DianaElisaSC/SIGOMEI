@@ -7,7 +7,7 @@
 
     <groupId>com.sigomei</groupId>
     <artifactId>sigomei</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>1.0</version>
 
     <properties>
         <maven.compiler.release>17</maven.compiler.release>
