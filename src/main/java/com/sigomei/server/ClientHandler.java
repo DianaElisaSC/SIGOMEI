@@ -160,9 +160,19 @@ public class ClientHandler extends Thread {
     }
 
     private Response deleteTecnico(int id) {
+    try {
+        // Verificar que no tenga órdenes registradas (RN-04)
+        boolean tieneOrdenes = ordenDAO.listar().stream()
+                .anyMatch(o -> o.getIdTecnico() == id);
+        if (tieneOrdenes) {
+            return Response.error("No se puede eliminar el tecnico porque tiene ordenes de mantenimiento registradas.");
+        }
         tecnicoDAO.eliminar(id);
         return Response.ok();
+    } catch (Exception e) {
+        return Response.error("Error interno: " + e.getMessage());
     }
+}
 
     // =========================================================
     // ORDENES

@@ -1,5 +1,7 @@
 package com.sigomei.server;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.net.ServerSocket;
 import java.net.Socket;
 
@@ -16,20 +18,19 @@ public class ServerMain {
                     "Servidor iniciado..."
             );
 
-            while (true) {
+        
+        ExecutorService pool = Executors.newFixedThreadPool(10);
 
-                Socket socket =
-                        serverSocket.accept();
+    while (true) {
+        
+        Socket socket = serverSocket.accept();
 
-                System.out.println(
-                        "Cliente conectado"
-                );
+        System.out.println("Cliente conectado");
 
-                ClientHandler handler =
-                        new ClientHandler(socket);
+        ClientHandler handler = new ClientHandler(socket);  
 
-                handler.start();
-            }
+        pool.execute(handler);  
+    }
 
         } catch (Exception e) {
             e.printStackTrace();
