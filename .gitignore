@@ -1,5 +1,7 @@
 # Compilados Maven
 target/
+*.class
+*.jar
 
 # IntelliJ IDEA
 .idea/
