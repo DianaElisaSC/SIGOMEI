@@ -20,6 +20,15 @@ public class TecnicoServiceImpl implements TecnicoService {
         if (tecnico == null) {
             throw new BusinessException("El tecnico no puede ser nulo.");
         }
+
+        // Validar RFC duplicado
+        boolean rfcExiste = tecnicos.stream()
+                .anyMatch(t -> t.getRfc() != null
+                        && t.getRfc().equalsIgnoreCase(tecnico.getRfc()));
+        if (rfcExiste) {
+            throw new BusinessException("RFC duplicado ya existe un técnico con ese RFC.");
+        }
+
         tecnicos.add(tecnico);
     }
 }

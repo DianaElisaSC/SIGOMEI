@@ -47,8 +47,8 @@ public class OrdenServiceImpl implements OrdenService {
         }
 
         // RN-01: Especialidad debe coincidir con tipo de equipo
-        if (!tecnico.getEspecialidad().equals(equipo.getTipo())) {
-            throw new BusinessException("Especialidad incompatible con el tipo de equipo.");
+        if (!tecnico.getEspecialidad().equalsIgnoreCase(equipo.getTipo())) {
+            throw new BusinessException("La especialidad del tecnico no coincide con el tipo del equipo.");
         }
 
         // RN-07: Criticidad Alta requiere certificacion nivel II o III
@@ -56,13 +56,16 @@ public class OrdenServiceImpl implements OrdenService {
             throw new BusinessException("Equipo Alta requiere certificacion nivel II o III.");
         }
 
-        // RN-02: No puede haber dos ordenes activas para el mismo equipo
+        // RN-02: No puede haber dos ordenes activas para el mismo equipo en la misma fecha
         boolean duplicada = ordenes.stream()
                 .anyMatch(o -> o.getIdEquipo() == orden.getIdEquipo()
-                        && ("Programada".equals(o.getEstado())
-                            || "En ejecucion".equals(o.getEstado())));
+                        && ("Programada".equalsIgnoreCase(o.getEstado())
+                            || "En ejecucion".equalsIgnoreCase(o.getEstado()))
+                        && (o.getFechaProgramada() == null && orden.getFechaProgramada() == null
+                            || o.getFechaProgramada() != null
+                            && o.getFechaProgramada().equals(orden.getFechaProgramada())));
         if (duplicada) {
-            throw new BusinessException("Ya existe una orden activa para este equipo.");
+            throw new BusinessException("Ya existe una orden activa para ese equipo en esa fecha.");
         }
 
         ordenes.add(orden);
@@ -88,6 +91,10 @@ public class OrdenServiceImpl implements OrdenService {
                 break;
             default:
                 valida = false;
+        }
+
+        if ("Programada".equals(actual) && "Finalizada".equals(nuevoEstado)) {
+            throw new BusinessException("Transicion invalida. No se puede pasar de Programada a Finalizada directamente.");
         }
 
         if (!valida) {

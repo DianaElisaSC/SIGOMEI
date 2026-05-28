@@ -144,6 +144,11 @@ public class ClientHandler extends Thread {
             new TecnicoServiceImpl().registrarTecnico(tecnico);
             tecnicoDAO.guardar(tecnico);
             return Response.ok();
+        } catch (RuntimeException e) {
+            if ("RFC_DUPLICADO".equals(e.getMessage())) {
+                return Response.error("RFC duplicado: ya existe un técnico con ese RFC.");
+            }
+            return Response.error("Error interno: " + e.getMessage());
         } catch (BusinessException e) {
             return Response.error(e.getMessage());
         }

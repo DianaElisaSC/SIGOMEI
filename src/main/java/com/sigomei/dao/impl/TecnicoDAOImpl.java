@@ -22,13 +22,25 @@ public class TecnicoDAOImpl implements TecnicoDAO {
 
     @Override
     public void guardar(Tecnico t) {
+        // Validar RFC duplicado en BD
+        String checkSql = "SELECT COUNT(*) FROM tecnico WHERE rfc = ?";
+        try (PreparedStatement check = conn.prepareStatement(checkSql)) {
+            check.setString(1, rfcOrDefault(t.getRfc()));
+            try (ResultSet rs = check.executeQuery()) {
+                if (rs.next() && rs.getInt(1) > 0) {
+                    throw new RuntimeException("RFC_DUPLICADO");
+                }
+            }
+        } catch (SQLException ex) {
+            throw new RuntimeException(ex);
+        }
+
         String sql = "INSERT INTO tecnico " +
                 "(nombre_completo, rfc, telefono, correo, especialidad, " +
                 "nivel_certificacion, fecha_ingreso, estatus) " +
                 "VALUES (?,?,?,?,?,?,?,?)";
 
         try (PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-
             ps.setString(1, t.getNombre());
             ps.setString(2, rfcOrDefault(t.getRfc()));
             ps.setString(3, t.getTelefono());
@@ -37,15 +49,12 @@ public class TecnicoDAOImpl implements TecnicoDAO {
             ps.setString(6, t.getNivelCertStr());
             setDateOrNull(ps, 7, t.getFechaIngreso());
             ps.setString(8, t.getEstatus());
-
             ps.executeUpdate();
-
             try (ResultSet rs = ps.getGeneratedKeys()) {
                 if (rs.next()) {
                     t.setIdTecnico(rs.getInt(1));
                 }
             }
-
         } catch (SQLException ex) {
             throw new RuntimeException(ex);
         }

@@ -15,7 +15,7 @@ import java.util.List;
 public class TecnicoPanel extends JPanel {
 
     private static final String[] COLUMNS =
-            {"ID", "Nombre", "RFC", "Especialidad", "Estatus", "Nivel Cert."};
+            {"ID", "Nombre", "RFC", "Correo", "Especialidad", "Estatus", "Nivel Cert."};
 
     private static final String[] ESPECIALIDADES = {"Electrico", "Mecanico", "Instrumentacion", "Hidraulico"};
     private static final String[] ESTATUS        = {"Activo", "Inactivo"};
@@ -25,6 +25,8 @@ public class TecnicoPanel extends JPanel {
     private final DefaultTableModel model;
     private final JTable  table;
     private final JLabel  lblStatus;
+    private final JComboBox<String> cmbFiltroEstatus = new JComboBox<>(new String[]{"Todos", "Activo", "Inactivo"});
+    private final JTextField txtBuscar = new JTextField(15);
 
     public TecnicoPanel(ServerConnection conn) {
         this.conn = conn;
@@ -59,7 +61,20 @@ public class TecnicoPanel extends JPanel {
         JPanel pnlBot = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         pnlBot.add(btnNuevo); pnlBot.add(btnEditar); pnlBot.add(btnEliminar);
 
-        add(pnlTop,                 BorderLayout.NORTH);
+        JPanel pnlFiltro = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        pnlFiltro.add(new JLabel("Filtrar por estatus:"));
+        pnlFiltro.add(cmbFiltroEstatus);
+        pnlFiltro.add(new JLabel("Buscar por nombre:"));
+        pnlFiltro.add(txtBuscar);
+        JButton btnBuscar = new JButton("Buscar");
+        btnBuscar.addActionListener(e -> filtrarTabla());
+        pnlFiltro.add(btnBuscar);
+
+        JPanel pnlNorth = new JPanel(new BorderLayout());
+        pnlNorth.add(pnlTop, BorderLayout.NORTH);
+        pnlNorth.add(pnlFiltro, BorderLayout.SOUTH);
+
+        add(pnlNorth,              BorderLayout.NORTH);
         add(new JScrollPane(table), BorderLayout.CENTER);
         add(pnlBot,                 BorderLayout.SOUTH);
 
@@ -76,13 +91,37 @@ public class TecnicoPanel extends JPanel {
                 List<Tecnico> lista = (List<Tecnico>) resp.getData();
                 for (Tecnico t : lista)
                     model.addRow(new Object[]{t.getIdTecnico(), t.getNombre(), t.getRfc(),
-                            t.getEspecialidad(), t.getEstatus(), t.getNivelCertificacion()});
+                            t.getCorreo(), t.getEspecialidad(), t.getEstatus(), t.getNivelCertificacion()});
                 lblStatus.setText(lista.size() + " tecnicos cargados");
             } else {
                 lblStatus.setText("Error: " + resp.getMessage());
             }
         } catch (Exception ex) {
             lblStatus.setText("Error de comunicacion: " + ex.getMessage());
+        }
+    }
+
+    private void filtrarTabla() {
+        String estatusFiltro = (String) cmbFiltroEstatus.getSelectedItem();
+        String nombreFiltro = txtBuscar.getText().trim().toLowerCase();
+        model.setRowCount(0);
+        if (!conn.isConnected()) return;
+        try {
+            Response resp = conn.send(new Request(Request.LIST_TECNICOS));
+            if (resp.isSuccess()) {
+                List<Tecnico> lista = (List<Tecnico>) resp.getData();
+                for (Tecnico t : lista) {
+                    boolean estatusOk = estatusFiltro.equals("Todos") || t.getEstatus().equalsIgnoreCase(estatusFiltro);
+                    boolean nombreOk = nombreFiltro.isEmpty() || t.getNombre().toLowerCase().contains(nombreFiltro);
+                    if (estatusOk && nombreOk) {
+                        model.addRow(new Object[]{t.getIdTecnico(), t.getNombre(), t.getRfc(),
+                                t.getCorreo(), t.getEspecialidad(), t.getEstatus(), t.getNivelCertificacion()});
+                    }
+                }
+                lblStatus.setText(model.getRowCount() + " tecnicos mostrados");
+            }
+        } catch (Exception ex) {
+            lblStatus.setText("Error: " + ex.getMessage());
         }
     }
 
@@ -113,11 +152,12 @@ public class TecnicoPanel extends JPanel {
         Tecnico t = new Tecnico(
                 (int)    model.getValueAt(row, 0),
                 (String) model.getValueAt(row, 1),
-                (String) model.getValueAt(row, 3),
                 (String) model.getValueAt(row, 4),
-                (int)    model.getValueAt(row, 5)
+                (String) model.getValueAt(row, 5),
+                (int)    model.getValueAt(row, 6)
         );
         t.setRfc((String) model.getValueAt(row, 2));
+        t.setCorreo((String) model.getValueAt(row, 3));
         return t;
     }
 
@@ -126,7 +166,15 @@ public class TecnicoPanel extends JPanel {
         try {
             Response resp = conn.send(req);
             if (resp.isSuccess()) { lblStatus.setText(okMsg); loadData(); }
-            else                   JOptionPane.showMessageDialog(this, "Error: " + resp.getMessage());
+            else {
+                String msg = resp.getMessage();
+                if (msg != null && msg.contains("foreign key constraint")) {
+                    msg = "No se puede eliminar el tecnico porque tiene ordenes de mantenimiento registradas.";
+                } else if (msg != null && msg.contains("RFC_DUPLICADO")) {
+                    msg = "Ya existe un tecnico con ese RFC en el sistema.";
+                }
+                JOptionPane.showMessageDialog(this, msg);
+            }
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, "Error de comunicacion:\n" + ex.getMessage());
         }
@@ -140,6 +188,7 @@ public class TecnicoPanel extends JPanel {
         private final JComboBox<String>  cmbEstatus  = new JComboBox<>(ESTATUS);
         private final JComboBox<Integer> cmbNivel    = new JComboBox<>(NIVELES);
         private final JTextField         txtRfc      = new JTextField(12);
+        private final JTextField         txtCorreo   = new JTextField(20);
         private final int id;
 
         TecnicoDialog(Window owner, String title, Tecnico t) {
@@ -151,22 +200,31 @@ public class TecnicoPanel extends JPanel {
                 cmbEstatus.setSelectedItem(t.getEstatus());
                 cmbNivel.setSelectedItem(t.getNivelCertificacion());
                 txtRfc.setText(t.getRfc());
+                txtCorreo.setText(t.getCorreo() != null ? t.getCorreo() : "");
             }
-            JPanel form = new JPanel(new GridLayout(5, 2, 6, 6));
+            JPanel form = new JPanel(new GridLayout(6, 2, 6, 6));
             form.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
             form.add(new JLabel("Nombre:"));      form.add(txtNombre);
             form.add(new JLabel("Especialidad:")); form.add(cmbEspec);
             form.add(new JLabel("Estatus:"));      form.add(cmbEstatus);
             form.add(new JLabel("Nivel Cert.:"));  form.add(cmbNivel);
             form.add(new JLabel("RFC:"));         form.add(txtRfc);
+            form.add(new JLabel("Correo:"));      form.add(txtCorreo);
 
             JButton ok = new JButton("Aceptar"), cancel = new JButton("Cancelar");
             ok.addActionListener(e -> {
                 if (txtNombre.getText().trim().isEmpty()) {
                     JOptionPane.showMessageDialog(this, "El nombre es obligatorio."); return;
                 }
-                if (txtRfc.getText().trim().isEmpty()) {
+                String rfc = txtRfc.getText().trim();
+                if (rfc.isEmpty()) {
                     JOptionPane.showMessageDialog(this, "El RFC es obligatorio."); return;
+                }
+                if (!rfc.matches("[A-Za-z0-9]{13}")) {
+                    JOptionPane.showMessageDialog(this, "El RFC debe tener exactamente 13 caracteres alfanuméricos."); return;
+                }
+                if (!txtCorreo.getText().trim().contains("@")) {
+                    JOptionPane.showMessageDialog(this, "Formato de correo invalido."); return;
                 }
                 confirmed = true; dispose();
             });
@@ -186,6 +244,7 @@ public class TecnicoPanel extends JPanel {
                     (String)  cmbEstatus.getSelectedItem(),
                     (Integer) cmbNivel.getSelectedItem());
             t.setRfc(txtRfc.getText().trim());
+            t.setCorreo(txtCorreo.getText().trim());
             return t;
         }
     }

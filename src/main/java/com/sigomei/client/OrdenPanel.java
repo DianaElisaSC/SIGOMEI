@@ -160,15 +160,19 @@ public class OrdenPanel extends JPanel {
         private final JTextField txtIdEquipo   = new JTextField(6);
         private final JTextField txtIdTecnico  = new JTextField(6);
         private final JTextField txtFechaProg  = new JTextField("2026-06-01", 12);
+        private final JTextField txtFechaInicio = new JTextField(10);
+        private final JTextField txtFechaCierre = new JTextField(10);
 
         NuevaOrdenDialog(Window owner) {
             super(owner, "Nueva Orden", ModalityType.APPLICATION_MODAL);
-            JPanel form = new JPanel(new GridLayout(4, 2, 6, 6));
+            JPanel form = new JPanel(new GridLayout(6, 2, 6, 6));
             form.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-            form.add(new JLabel("Descripcion:"));    form.add(txtDesc);
-            form.add(new JLabel("ID Equipo:"));      form.add(txtIdEquipo);
-            form.add(new JLabel("ID Tecnico:"));     form.add(txtIdTecnico);
+            form.add(new JLabel("Descripcion:"));          form.add(txtDesc);
+            form.add(new JLabel("ID Equipo:"));            form.add(txtIdEquipo);
+            form.add(new JLabel("ID Tecnico:"));           form.add(txtIdTecnico);
             form.add(new JLabel("F.Programada (YYYY-MM-DD):")); form.add(txtFechaProg);
+            form.add(new JLabel("F.Inicio (YYYY-MM-DD):")); form.add(txtFechaInicio);
+            form.add(new JLabel("F.Cierre (YYYY-MM-DD):")); form.add(txtFechaCierre);
 
             JButton ok = new JButton("Aceptar"), cancel = new JButton("Cancelar");
             ok.addActionListener(e -> {
@@ -179,6 +183,21 @@ public class OrdenPanel extends JPanel {
                       Integer.parseInt(txtIdTecnico.getText().trim()); }
                 catch (NumberFormatException nfe) {
                     JOptionPane.showMessageDialog(this, "IDs deben ser numeros enteros."); return;
+                }
+                String inicioStr = txtFechaInicio.getText().trim();
+                String cierreStr = txtFechaCierre.getText().trim();
+                if (!inicioStr.isEmpty() && !cierreStr.isEmpty()) {
+                    try {
+                        LocalDate inicio = LocalDate.parse(inicioStr);
+                        LocalDate cierre = LocalDate.parse(cierreStr);
+                        if (cierre.isBefore(inicio)) {
+                            JOptionPane.showMessageDialog(this, "La fecha de cierre no puede ser anterior a la fecha de inicio.");
+                            return;
+                        }
+                    } catch (Exception ex) {
+                        JOptionPane.showMessageDialog(this, "Formato de fecha invalido.");
+                        return;
+                    }
                 }
                 confirmed = true; dispose();
             });
@@ -196,6 +215,12 @@ public class OrdenPanel extends JPanel {
                     Integer.parseInt(txtIdEquipo.getText().trim()),
                     Integer.parseInt(txtIdTecnico.getText().trim()));
             o.setFechaProgramada(LocalDate.parse(txtFechaProg.getText().trim()));
+            if (!txtFechaInicio.getText().trim().isEmpty()) {
+                o.setFechaInicio(LocalDate.parse(txtFechaInicio.getText().trim()));
+            }
+            if (!txtFechaCierre.getText().trim().isEmpty()) {
+                o.setFechaCierre(LocalDate.parse(txtFechaCierre.getText().trim()));
+            }
             return o;
         }
     }
